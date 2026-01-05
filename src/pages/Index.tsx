@@ -5,125 +5,7 @@ import { Toolbar } from '@/components/graph/Toolbar';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { useToast } from '@/hooks/use-toast';
 import { Sparkles } from 'lucide-react';
-
-// Mock graph generator - simulates AI response
-const generateGraphFromCommand = (command: string): { nodes: GraphNode[]; edges: GraphEdge[]; message: string } => {
-  const lowerCommand = command.toLowerCase();
-  
-  if (lowerCommand.includes('binary tree') || lowerCommand.includes('tree')) {
-    const nodeCount = parseInt(lowerCommand.match(/\d+/)?.[0] || '7');
-    const nodes: GraphNode[] = [];
-    const edges: GraphEdge[] = [];
-    
-    for (let i = 1; i <= Math.min(nodeCount, 15); i++) {
-      nodes.push({ id: `N${i}`, label: `${i}` });
-    }
-    
-    for (let i = 1; i <= Math.floor(nodes.length / 2); i++) {
-      const leftChild = 2 * i;
-      const rightChild = 2 * i + 1;
-      if (leftChild <= nodes.length) {
-        edges.push({ source: `N${i}`, target: `N${leftChild}` });
-      }
-      if (rightChild <= nodes.length) {
-        edges.push({ source: `N${i}`, target: `N${rightChild}` });
-      }
-    }
-    
-    return { nodes, edges, message: `Created a binary tree with ${nodes.length} nodes!` };
-  }
-  
-  if (lowerCommand.includes('mutex') || lowerCommand.includes('lock')) {
-    return {
-      nodes: [
-        { id: 'P1', label: 'Process 1' },
-        { id: 'P2', label: 'Process 2' },
-        { id: 'P3', label: 'Process 3' },
-        { id: 'M1', label: 'Mutex' },
-      ],
-      edges: [
-        { source: 'P1', target: 'M1' },
-        { source: 'P2', target: 'M1' },
-        { source: 'P3', target: 'M1' },
-      ],
-      message: 'Created a mutex graph with 3 processes competing for 1 mutex!',
-    };
-  }
-  
-  if (lowerCommand.includes('linked list') || lowerCommand.includes('list')) {
-    const count = parseInt(lowerCommand.match(/\d+/)?.[0] || '4');
-    const nodes: GraphNode[] = [];
-    const edges: GraphEdge[] = [];
-    
-    for (let i = 1; i <= count; i++) {
-      nodes.push({ id: `N${i}`, label: `Node ${i}` });
-      if (i > 1) {
-        edges.push({ source: `N${i - 1}`, target: `N${i}` });
-      }
-    }
-    
-    return { nodes, edges, message: `Created a linked list with ${count} nodes!` };
-  }
-  
-  if (lowerCommand.includes('random') || lowerCommand.includes('graph')) {
-    const count = parseInt(lowerCommand.match(/\d+/)?.[0] || '5');
-    const nodes: GraphNode[] = [];
-    const edges: GraphEdge[] = [];
-    
-    for (let i = 1; i <= count; i++) {
-      nodes.push({ id: `N${i}`, label: String.fromCharCode(64 + i) });
-    }
-    
-    // Create random edges
-    for (let i = 0; i < nodes.length; i++) {
-      for (let j = i + 1; j < nodes.length; j++) {
-        if (Math.random() > 0.5) {
-          edges.push({ source: nodes[i].id, target: nodes[j].id });
-        }
-      }
-    }
-    
-    // Ensure at least some edges
-    if (edges.length === 0 && nodes.length > 1) {
-      edges.push({ source: nodes[0].id, target: nodes[1].id });
-    }
-    
-    return { nodes, edges, message: `Created a random graph with ${count} nodes and ${edges.length} edges!` };
-  }
-  
-  if (lowerCommand.includes('cycle') || lowerCommand.includes('circular')) {
-    const count = parseInt(lowerCommand.match(/\d+/)?.[0] || '5');
-    const nodes: GraphNode[] = [];
-    const edges: GraphEdge[] = [];
-    
-    for (let i = 1; i <= count; i++) {
-      nodes.push({ id: `N${i}`, label: `${i}` });
-      edges.push({ 
-        source: `N${i}`, 
-        target: `N${i === count ? 1 : i + 1}` 
-      });
-    }
-    
-    return { nodes, edges, message: `Created a cycle graph with ${count} nodes!` };
-  }
-  
-  // Default: simple graph
-  return {
-    nodes: [
-      { id: 'A', label: 'A' },
-      { id: 'B', label: 'B' },
-      { id: 'C', label: 'C' },
-      { id: 'D', label: 'D' },
-    ],
-    edges: [
-      { source: 'A', target: 'B' },
-      { source: 'B', target: 'C' },
-      { source: 'C', target: 'D' },
-      { source: 'D', target: 'A' },
-    ],
-    message: "I created a simple graph. Try commands like 'binary tree with 7 nodes', 'mutex graph', or 'random graph with 6 nodes'!",
-  };
-};
+import { supabase } from '@/integrations/supabase/client';
 
 let nodeCounter = 1;
 
@@ -266,30 +148,65 @@ const Index = () => {
     }
   }, []);
 
-  const handleGraphCommand = useCallback((command: string) => {
+  const handleGraphCommand = useCallback(async (command: string) => {
     setIsProcessing(true);
     
-    // Simulate AI processing delay
-    setTimeout(() => {
-      const result = generateGraphFromCommand(command);
+    try {
+      console.log('Sending command to AI:', command);
       
+      const { data, error } = await supabase.functions.invoke('generate-graph', {
+        body: { command }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to generate graph');
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      console.log('Received graph data:', data);
+
       // Update node counter based on generated nodes
-      const maxId = Math.max(...result.nodes.map((n) => {
+      const maxId = Math.max(...data.nodes.map((n: GraphNode) => {
         const match = n.id.match(/\d+/);
         return match ? parseInt(match[0]) : 0;
       }), 0);
       nodeCounter = maxId + 1;
       
-      setNodes(result.nodes);
-      setEdges(result.edges);
-      setIsProcessing(false);
+      setNodes(data.nodes);
+      setEdges(data.edges);
       
       // Add assistant message
       if ((window as any).addAssistantMessage) {
-        (window as any).addAssistantMessage(result.message);
+        (window as any).addAssistantMessage(data.message);
       }
-    }, 800);
-  }, []);
+
+      toast({
+        title: 'Graph Generated',
+        description: `Created ${data.nodes.length} nodes and ${data.edges.length} edges`,
+      });
+
+    } catch (error) {
+      console.error('Error generating graph:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate graph';
+      
+      if ((window as any).addAssistantMessage) {
+        (window as any).addAssistantMessage(`Sorry, I couldn't generate that graph: ${errorMessage}`);
+      }
+      
+      toast({
+        title: 'Generation Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

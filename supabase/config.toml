@@ -1,0 +1,4 @@
+project_id = "unupyrnfnxzfdmlarihg"
+
+[functions.generate-graph]
+verify_jwt = false
