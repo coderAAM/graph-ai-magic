@@ -6,12 +6,16 @@ export interface GraphNode {
   label?: string;
   x?: number;
   y?: number;
+  color?: string;
+  size?: number;
 }
 
 export interface GraphEdge {
   source: string;
   target: string;
   label?: string;
+  color?: string;
+  width?: number;
 }
 
 interface GraphCanvasProps {
@@ -179,15 +183,33 @@ export const GraphCanvas = ({
       if (existingNode.length === 0) {
         const angle = (2 * Math.PI * index) / Math.max(nodes.length, 1);
         const radius = 150;
-        cy.add({
+        const addedNode = cy.add({
           data: { id: node.id, label: node.label || node.id },
           position: {
             x: node.x ?? cy.width() / 2 + radius * Math.cos(angle),
             y: node.y ?? cy.height() / 2 + radius * Math.sin(angle),
           },
         });
+        // Apply custom styles if present
+        if (node.color || node.size) {
+          addedNode.style({
+            'background-color': node.color || '#00d4ff',
+            'border-color': node.color || '#00d4ff',
+            width: node.size || 50,
+            height: node.size || 50,
+          });
+        }
       } else {
         existingNode.data('label', node.label || node.id);
+        // Update styles if they changed
+        if (node.color || node.size) {
+          existingNode.style({
+            'background-color': node.color || '#00d4ff',
+            'border-color': node.color || '#00d4ff',
+            width: node.size || 50,
+            height: node.size || 50,
+          });
+        }
       }
     });
 
@@ -206,7 +228,7 @@ export const GraphCanvas = ({
     edges.forEach((edge) => {
       const edgeId = `${edge.source}-${edge.target}`;
       if (cy.getElementById(edgeId).length === 0) {
-        cy.add({
+        const addedEdge = cy.add({
           data: {
             id: edgeId,
             source: edge.source,
@@ -214,6 +236,23 @@ export const GraphCanvas = ({
             label: edge.label,
           },
         });
+        // Apply custom styles if present
+        if (edge.color || edge.width) {
+          addedEdge.style({
+            'line-color': edge.color || '#0891b2',
+            'target-arrow-color': edge.color || '#0891b2',
+            width: edge.width || 2,
+          });
+        }
+      } else {
+        const existingEdge = cy.getElementById(edgeId);
+        if (edge.color || edge.width) {
+          existingEdge.style({
+            'line-color': edge.color || '#0891b2',
+            'target-arrow-color': edge.color || '#0891b2',
+            width: edge.width || 2,
+          });
+        }
       }
     });
 
