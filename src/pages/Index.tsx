@@ -3,20 +3,25 @@ import { GraphCanvas } from '@/components/graph/GraphCanvas';
 import { Toolbar } from '@/components/graph/Toolbar';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { MobileChatDrawer } from '@/components/chat/MobileChatDrawer';
+import { NodeEdgeCustomizer } from '@/components/graph/NodeEdgeCustomizer';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-interface Node {
+export interface Node {
   id: string;
   label?: string;
   x?: number;
   y?: number;
+  color?: string;
+  size?: number;
 }
 
-interface Edge {
+export interface Edge {
   source: string;
   target: string;
   label?: string;
+  color?: string;
+  width?: number;
 }
 
 const Index = () => {
@@ -149,6 +154,69 @@ const Index = () => {
     setEdges((prev) => [...prev, newEdge]);
   }, []);
 
+  const handleNodeUpdate = useCallback((customization: { label: string; color: string; size: number }) => {
+    if (!selectedNodeId) return;
+    setNodes((prev) =>
+      prev.map((n) =>
+        n.id === selectedNodeId
+          ? { ...n, label: customization.label, color: customization.color, size: customization.size }
+          : n
+      )
+    );
+    // Update cytoscape node style directly
+    if (cyRef.current) {
+      const node = cyRef.current.getElementById(selectedNodeId);
+      if (node.length) {
+        node.data('label', customization.label);
+        node.style({
+          'background-color': customization.color,
+          'border-color': customization.color,
+          width: customization.size,
+          height: customization.size,
+        });
+      }
+    }
+    toast({
+      title: 'Node Updated',
+      description: `Applied changes to "${customization.label}"`,
+    });
+  }, [selectedNodeId, toast]);
+
+  const handleEdgeUpdate = useCallback((customization: { label: string; color: string; width: number }) => {
+    if (!selectedEdgeId) return;
+    const [source, target] = selectedEdgeId.split('-');
+    setEdges((prev) =>
+      prev.map((e) =>
+        e.source === source && e.target === target
+          ? { ...e, label: customization.label, color: customization.color, width: customization.width }
+          : e
+      )
+    );
+    // Update cytoscape edge style directly
+    if (cyRef.current) {
+      const edge = cyRef.current.getElementById(selectedEdgeId);
+      if (edge.length) {
+        edge.data('label', customization.label);
+        edge.style({
+          'line-color': customization.color,
+          'target-arrow-color': customization.color,
+          width: customization.width,
+        });
+      }
+    }
+    toast({
+      title: 'Edge Updated',
+      description: 'Applied changes to edge',
+    });
+  }, [selectedEdgeId, toast]);
+
+  const getSelectedNode = () => nodes.find((n) => n.id === selectedNodeId);
+  const getSelectedEdge = () => {
+    if (!selectedEdgeId) return undefined;
+    const [source, target] = selectedEdgeId.split('-');
+    return edges.find((e) => e.source === source && e.target === target);
+  };
+
   const handleGraphCommand = async (command: string) => {
     setIsProcessing(true);
     
@@ -195,7 +263,6 @@ const Index = () => {
       setIsProcessing(false);
     }
   };
-
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
@@ -291,6 +358,32 @@ const Index = () => {
                 </p>
               </div>
             </div>
+          )}
+
+          {/* Node Customizer */}
+          {selectedNodeId && !isAddingEdge && (
+            <NodeEdgeCustomizer
+              type="node"
+              selectedId={selectedNodeId}
+              currentLabel={getSelectedNode()?.label || selectedNodeId}
+              currentColor={getSelectedNode()?.color}
+              currentSize={getSelectedNode()?.size}
+              onUpdate={handleNodeUpdate}
+              onClose={() => setSelectedNodeId(null)}
+            />
+          )}
+
+          {/* Edge Customizer */}
+          {selectedEdgeId && (
+            <NodeEdgeCustomizer
+              type="edge"
+              selectedId={selectedEdgeId}
+              currentLabel={getSelectedEdge()?.label || ''}
+              currentColor={getSelectedEdge()?.color}
+              currentSize={getSelectedEdge()?.width}
+              onUpdate={handleEdgeUpdate}
+              onClose={() => setSelectedEdgeId(null)}
+            />
           )}
         </div>
 

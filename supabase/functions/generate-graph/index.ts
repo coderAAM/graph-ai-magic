@@ -20,6 +20,7 @@ Rules:
 3. Always include a helpful message describing the graph you created
 4. DO NOT include any text before or after the JSON object
 5. DO NOT use markdown code blocks
+6. When the user specifies names for nodes (like person names: Ahmed, Ali, Usman), use those names as labels
 
 Graph types you can create:
 - Binary trees: nodes with left/right children
@@ -32,6 +33,7 @@ Graph types you can create:
 - Complete graphs: every node connected to every other
 - Bipartite graphs: two sets of nodes with connections between sets
 - Star graphs: central node connected to all others
+- Friendship/social networks: people connected by relationships
 
 For equations like "y = x^2", create nodes for x values and edges showing relationships.
 Be creative but accurate with your graph interpretations.`;
