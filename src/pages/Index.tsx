@@ -8,6 +8,7 @@ import { MobileChatDrawer } from '@/components/chat/MobileChatDrawer';
 import { NodeEdgeCustomizer } from '@/components/graph/NodeEdgeCustomizer';
 import { useToast } from '@/hooks/use-toast';
 import { useGraphStorage } from '@/hooks/useGraphStorage';
+import { useGraphHistory } from '@/hooks/useGraphHistory';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Node {
@@ -38,6 +39,7 @@ const Index = () => {
   const cyRef = useRef<any>(null);
   const { toast } = useToast();
   const { savedGraphs, saveGraph, deleteGraph, loadGraph } = useGraphStorage();
+  const { undo, redo, canUndo, canRedo } = useGraphHistory(nodes, edges, setNodes, setEdges);
 
   const handleNodeSelect = useCallback((nodeId: string | null) => {
     if (isAddingEdge && nodeId) {
