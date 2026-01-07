@@ -362,6 +362,10 @@ const Index = () => {
             onFitView={handleFitView}
             isAddingEdge={isAddingEdge}
             hasSelection={!!selectedNodeId || !!selectedEdgeId}
+            onUndo={undo}
+            onRedo={redo}
+            canUndo={canUndo}
+            canRedo={canRedo}
           />
         </div>
       </header>
@@ -401,6 +405,10 @@ const Index = () => {
               onFitView={handleFitView}
               isAddingEdge={isAddingEdge}
               hasSelection={!!selectedNodeId || !!selectedEdgeId}
+              onUndo={undo}
+              onRedo={redo}
+              canUndo={canUndo}
+              canRedo={canRedo}
             />
           </div>
 
