@@ -1,10 +1,13 @@
 import { useState, useRef, useCallback } from 'react';
-import { GraphCanvas } from '@/components/graph/GraphCanvas';
+import { GraphCanvas, NodePosition } from '@/components/graph/GraphCanvas';
 import { Toolbar } from '@/components/graph/Toolbar';
+import { ZoomControls } from '@/components/graph/ZoomControls';
+import { SaveLoadPanel } from '@/components/graph/SaveLoadPanel';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { MobileChatDrawer } from '@/components/chat/MobileChatDrawer';
 import { NodeEdgeCustomizer } from '@/components/graph/NodeEdgeCustomizer';
 import { useToast } from '@/hooks/use-toast';
+import { useGraphStorage } from '@/hooks/useGraphStorage';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Node {
@@ -34,6 +37,7 @@ const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const cyRef = useRef<any>(null);
   const { toast } = useToast();
+  const { savedGraphs, saveGraph, deleteGraph, loadGraph } = useGraphStorage();
 
   const handleNodeSelect = useCallback((nodeId: string | null) => {
     if (isAddingEdge && nodeId) {
@@ -148,6 +152,57 @@ const Index = () => {
       cyRef.current.center();
     }
   }, []);
+
+  const handleZoomIn = useCallback(() => {
+    if (cyRef.current) {
+      cyRef.current.zoom(cyRef.current.zoom() * 1.3);
+    }
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (cyRef.current) {
+      cyRef.current.zoom(cyRef.current.zoom() / 1.3);
+    }
+  }, []);
+
+  const handleNodeDragEnd = useCallback((positions: NodePosition[]) => {
+    setNodes((prev) =>
+      prev.map((node) => {
+        const pos = positions.find((p) => p.id === node.id);
+        return pos ? { ...node, x: pos.x, y: pos.y } : node;
+      })
+    );
+  }, []);
+
+  const handleSaveGraph = useCallback((name: string) => {
+    saveGraph(name, nodes, edges);
+    toast({
+      title: 'Graph Saved',
+      description: `"${name}" has been saved to your browser`,
+    });
+  }, [nodes, edges, saveGraph, toast]);
+
+  const handleLoadGraph = useCallback((id: string) => {
+    const graph = loadGraph(id);
+    if (graph) {
+      setNodes(graph.nodes);
+      setEdges(graph.edges);
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      toast({
+        title: 'Graph Loaded',
+        description: `Loaded "${graph.name}"`,
+      });
+    }
+  }, [loadGraph, toast]);
+
+  const handleDeleteGraph = useCallback((id: string) => {
+    deleteGraph(id);
+    toast({
+      title: 'Graph Deleted',
+      description: 'The saved graph has been removed',
+    });
+  }, [deleteGraph, toast]);
 
   const handleEdgeCreated = useCallback((source: string, target: string) => {
     const newEdge: Edge = { source, target };
@@ -288,7 +343,14 @@ const Index = () => {
         </div>
         
         {/* Desktop Toolbar */}
-        <div className="hidden sm:block">
+        <div className="hidden sm:flex items-center gap-2">
+          <SaveLoadPanel
+            savedGraphs={savedGraphs}
+            onSave={handleSaveGraph}
+            onLoad={handleLoadGraph}
+            onDelete={handleDeleteGraph}
+            hasNodes={nodes.length > 0}
+          />
           <Toolbar
             onAddNode={handleAddNode}
             onAddEdge={handleAddEdge}
@@ -316,8 +378,16 @@ const Index = () => {
             edgeSourceNode={edgeSourceNode}
             onEdgeCreated={handleEdgeCreated}
             cyRef={cyRef}
+            onNodeDragEnd={handleNodeDragEnd}
           />
-          
+
+          {/* Zoom Controls */}
+          <ZoomControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onFitView={handleFitView}
+          />
+
           {/* Mobile Toolbar */}
           <div className="absolute bottom-4 left-4 right-4 sm:hidden">
             <Toolbar

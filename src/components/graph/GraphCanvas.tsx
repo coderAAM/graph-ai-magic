@@ -10,6 +10,12 @@ export interface GraphNode {
   size?: number;
 }
 
+export interface NodePosition {
+  id: string;
+  x: number;
+  y: number;
+}
+
 export interface GraphEdge {
   source: string;
   target: string;
@@ -28,6 +34,7 @@ interface GraphCanvasProps {
   edgeSourceNode?: string | null;
   onEdgeCreated?: (source: string, target: string) => void;
   cyRef?: React.MutableRefObject<Core | null>;
+  onNodeDragEnd?: (positions: NodePosition[]) => void;
 }
 
 export const GraphCanvas = ({
@@ -40,6 +47,7 @@ export const GraphCanvas = ({
   edgeSourceNode,
   onEdgeCreated,
   cyRef,
+  onNodeDragEnd,
 }: GraphCanvasProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const internalCyRef = useRef<Core | null>(null);
@@ -151,6 +159,18 @@ export const GraphCanvas = ({
       if (evt.target === cy) {
         onNodeSelect?.(null);
         onEdgeSelect?.(null);
+      }
+    });
+
+    // Handle drag end to update node positions
+    cy.on('dragfree', 'node', () => {
+      if (onNodeDragEnd) {
+        const positions: NodePosition[] = cy.nodes().map((n) => ({
+          id: n.id(),
+          x: n.position('x'),
+          y: n.position('y'),
+        }));
+        onNodeDragEnd(positions);
       }
     });
 
